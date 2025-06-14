@@ -1,1 +1,318 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <stack>
+#include <queue>
+#include <cstring>
+#include <map>
+
+using namespace std;
+
+const int MAX_AGENDA = 100;
+
+map<string, int> urutanHari = {
+    {"Senin", 1}, {"Selasa", 2}, {"Rabu", 3},
+    {"Kamis", 4}, {"Jumat", 5}, {"Sabtu", 6}, {"Minggu", 7}
+};
+
+struct MataKuliah {
+    char nama[50];
+    string dosen;
+    string hari;
+    string jam;
+    string ruangan;      // Ditambahkan
+    string keterangan;
+};
+
+class AgendaKuliah {
+private:
+    MataKuliah daftar[MAX_AGENDA];
+    int jumlah;
+    bool diedit;
+    stack<string> logStack;
+    queue<string> notifikasi;
+
+public:
+    AgendaKuliah() {
+        jumlah = 0;
+        diedit = false;
+        notifikasi.push("Senin|| Reminder: Tugas PBO besok!");
+        notifikasi.push("Selasa|| Ujian Diskrit minggu depan!");
+        notifikasi.push("Rabu|| Ganti jadwal Sistem Operasi");
+    }
+
+    void tambahAgenda(const MataKuliah& mk) {
+        if (jumlah < MAX_AGENDA) {
+            daftar[jumlah++] = mk;
+            logStack.push("Agenda ditambahkan: " + string(mk.nama));
+        }
+    }
+
+    void tampilkanSemua() {
+        if (jumlah == 0) {
+            string pilih;
+            cout << "Belum ada agenda. Tambah terlebih dahulu? (yes/back): ";
+            cin >> pilih;
+            if (pilih == "yes" || pilih == "YES") menuTambah();
+            return;
+        }
+        cout << "\n===== DAFTAR AGENDA KULIAH =====\n";
+        for (int i = 0; i < jumlah; i++) {
+            cout << i + 1 << ". " << daftar[i].nama << " | " << daftar[i].hari
+                 << " " << daftar[i].jam << " | Dosen: " << daftar[i].dosen
+                 << " | Ruangan: " << daftar[i].ruangan
+                 << " | " << daftar[i].keterangan << endl;
+        }
+    }
+
+    void simpanKeFile(const string& namaFile) {
+        if (jumlah == 0) {
+            string pilih;
+            cout << "Belum ada agenda. Tambah terlebih dahulu? (yes/back): ";
+            cin >> pilih;
+            if (pilih == "yes" || pilih == "YES") menuTambah();
+            return;
+        }
+        ofstream file(namaFile);
+        for (int i = 0; i < jumlah; i++) {
+            file << daftar[i].nama << ";"
+                 << daftar[i].hari << ";"
+                 << daftar[i].jam << ";"
+                 << daftar[i].dosen << ";"
+                 << daftar[i].ruangan << ";"
+                 << daftar[i].keterangan << "\n";
+        }
+        file.close();
+        logStack.push("Agenda disimpan ke file");
+        cout << "Agenda berhasil disimpan ke file '" << namaFile << "'.\n";
+    }
+
+    void bacaDariFile(const string& namaFile) {
+        ifstream file(namaFile);
+        if (!file.is_open()) {
+            string pilih;
+            cout << "File tidak ditemukan. Buat baru? (yes/back): ";
+            cin >> pilih;
+            if (pilih == "yes" || pilih == "YES") menuTambah();
+            return;
+        }
+        string line;
+        while (getline(file, line)) {
+            if (line.empty()) continue;
+            MataKuliah mk;
+            vector<string> tokens;
+            size_t pos = 0;
+            while ((pos = line.find(";")) != string::npos) {
+                tokens.push_back(line.substr(0, pos));
+                line.erase(0, pos + 1);
+            }
+            tokens.push_back(line);
+            if (tokens.size() == 6) {
+                strcpy(mk.nama, tokens[0].c_str());
+                mk.hari = tokens[1];
+                mk.jam = tokens[2];
+                mk.dosen = tokens[3];
+                mk.ruangan = tokens[4];
+                mk.keterangan = tokens[5];
+                tambahAgenda(mk);
+            }
+        }
+        file.close();
+        logStack.push("Agenda dibaca dari file");
+        cout << "Agenda berhasil dibaca dari file '" << namaFile << "'.\n";
+    }
+
+    void urutkanAgenda() {
+        if (jumlah == 0) {
+            string pilih;
+            cout << "Belum ada data untuk diurutkan. Tambah terlebih dahulu? (yes/back): ";
+            cin >> pilih;
+            if (pilih == "yes" || pilih == "YES") menuTambah();
+            return;
+        }
+        divideAndConquerSort(0, jumlah - 1);
+        logStack.push("Agenda diurutkan berdasarkan hari");
+        cout << "Agenda berhasil diurutkan berdasarkan hari.\n";
+        tampilkanSemua();
+    }
+
+    void divideAndConquerSort(int left, int right) {
+        if (left < right) {
+            int mid = (left + right) / 2;
+            divideAndConquerSort(left, mid);
+            divideAndConquerSort(mid + 1, right);
+            gabungkan(left, mid, right);
+        }
+    }
+
+    void gabungkan(int left, int mid, int right) {
+        vector<MataKuliah> temp;
+        int i = left, j = mid + 1;
+        while (i <= mid && j <= right) {
+            if (urutanHari[daftar[i].hari] < urutanHari[daftar[j].hari]) {
+                temp.push_back(daftar[i++]);
+            } else {
+                temp.push_back(daftar[j++]);
+            }
+        }
+        while (i <= mid) temp.push_back(daftar[i++]);
+        while (j <= right) temp.push_back(daftar[j++]);
+        for (int k = left; k <= right; k++) {
+            daftar[k] = temp[k - left];
+        }
+    }
+
+    MataKuliah* cariAgenda(const char* namaMatkul) {
+        for (int i = 0; i < jumlah; i++) {
+            if (strcmp(daftar[i].nama, namaMatkul) == 0) {
+                return &daftar[i];
+            }
+        }
+        return nullptr;
+    }
+
+    void editAgenda(const char* namaMatkul) {
+        MataKuliah* hasil = cariAgenda(namaMatkul);
+        if (hasil != nullptr) {
+            cin.ignore();
+            cout << "Masukkan nama mata kuliah baru: ";
+            cin.getline(hasil->nama, 50);
+            cout << "Masukkan nama dosen baru: ";
+            getline(cin, hasil->dosen);
+            cout << "Masukkan hari baru: ";
+            getline(cin, hasil->hari);
+            cout << "Masukkan jam baru: ";
+            getline(cin, hasil->jam);
+            cout << "Masukkan ruangan baru: ";
+            getline(cin, hasil->ruangan);
+            cout << "Masukkan keterangan baru: ";
+            getline(cin, hasil->keterangan);
+            logStack.push("Agenda diedit: " + string(hasil->nama));
+            diedit = true;
+        } else {
+            cout << "Mata kuliah tidak ditemukan.\n";
+        }
+    }
+
+    void hapusAgenda(const char* namaMatkul) {
+        if (!diedit) {
+            cout << "Hapus hanya dapat dilakukan setelah diedit.\n";
+            return;
+        }
+        for (int i = 0; i < jumlah; i++) {
+            if (strcmp(daftar[i].nama, namaMatkul) == 0) {
+                for (int j = i; j < jumlah - 1; j++) {
+                    daftar[j] = daftar[j + 1];
+                }
+                jumlah--;
+                logStack.push("Agenda dihapus: " + string(namaMatkul));
+                cout << "Agenda berhasil dihapus.\n";
+                return;
+            }
+        }
+        cout << "Mata kuliah tidak ditemukan.\n";
+    }
+
+    void tampilkanLog() {
+        cout << "\n===== LOG AKTIVITAS (STACK - LIFO) =====\n";
+        if (logStack.empty()) {
+            cout << "Belum ada aktivitas yang tercatat.\n";
+            return;
+        }
+        stack<string> temp = logStack;
+        while (!temp.empty()) {
+            cout << "- " << temp.top() << endl;
+            temp.pop();
+        }
+    }
+
+    void tampilkanNotifikasi() {
+        cout << "\n===== NOTIFIKASI (QUEUE - FIFO) =====\n";
+        queue<string> temp = notifikasi;
+        while (!temp.empty()) {
+            cout << "- " << temp.front() << endl;
+            temp.pop();
+        }
+    }
+
+    void menuTambah() {
+        MataKuliah mk;
+        cin.ignore();
+        cout << "Masukkan nama mata kuliah: ";
+        cin.getline(mk.nama, 50);
+        cout << "Masukkan nama dosen: ";
+        getline(cin, mk.dosen);
+        cout << "Masukkan hari: ";
+        getline(cin, mk.hari);
+        cout << "Masukkan jam: ";
+        getline(cin, mk.jam);
+        cout << "Masukkan ruangan: ";
+        getline(cin, mk.ruangan);
+        cout << "Masukkan keterangan: ";
+        getline(cin, mk.keterangan);
+        tambahAgenda(mk);
+    }
+};
+
+int main() {
+    AgendaKuliah sistem;
+    int pilihan;
+    do {
+        cout << "\n======= MENU AGENDA KULIAH =======\n";
+        cout << "1. Tambah Agenda\n";
+        cout << "2. Tampilkan Semua Agenda\n";
+        cout << "3. Simpan ke File\n";
+        cout << "4. Baca dari File\n";
+        cout << "5. Urutkan Agenda\n";
+        cout << "6. Cari Agenda\n";
+        cout << "7. Edit Agenda\n";
+        cout << "8. Hapus Agenda\n";
+        cout << "9. Tampilkan Notifikasi\n";
+        cout << "10. Tampilkan Log\n";
+        cout << "0. Keluar\n";
+        cout << "Pilih menu: ";
+        cin >> pilihan;
+
+        switch (pilihan) {
+            case 1: sistem.menuTambah(); break;
+            case 2: sistem.tampilkanSemua(); break;
+            case 3: sistem.simpanKeFile("agenda.txt"); break;
+            case 4: sistem.bacaDariFile("agenda.txt"); break;
+            case 5: sistem.urutkanAgenda(); break;
+            case 6: {
+                char nama[50];
+                cin.ignore();
+                cout << "Masukkan nama mata kuliah yang dicari: ";
+                cin.getline(nama, 50);
+                MataKuliah* hasil = sistem.cariAgenda(nama);
+                if (hasil)
+                    cout << hasil->nama << " | " << hasil->hari << " " << hasil->jam << " | Ruangan: " << hasil->ruangan << endl;
+                else
+                    cout << "Mata kuliah tidak ditemukan.\n";
+                break;
+            }
+            case 7: {
+                char nama[50];
+                cin.ignore();
+                cout << "Masukkan nama mata kuliah yang ingin diedit: ";
+                cin.getline(nama, 50);
+                sistem.editAgenda(nama);
+                break;
+            }
+            case 8: {
+                char nama[50];
+                cin.ignore();
+                cout << "Masukkan nama mata kuliah yang ingin dihapus: ";
+                cin.getline(nama, 50);
+                sistem.hapusAgenda(nama);
+                break;
+            }
+            case 9: sistem.tampilkanNotifikasi(); break;
+            case 10: sistem.tampilkanLog(); break;
+        }
+    } while (pilihan != 0);
+
+    return 0;
+}
 
