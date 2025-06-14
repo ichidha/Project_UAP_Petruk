@@ -1,1 +1,55 @@
+#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+class Agenda {
+private:
+    string hari;
+    string mataKuliah;
+    string jam;
+    string ruangan;
+
+public:
+    void inputJadwal() {
+        cout << "Masukkan Hari         : ";
+        getline(cin, hari);
+        cout << "Masukkan Mata Kuliah  : ";
+        getline(cin, mataKuliah);
+        cout << "Masukkan Jam Kuliah   : ";
+        getline(cin, jam);
+        cout << "Masukkan Ruangan      : ";
+        getline(cin, ruangan);
+    }
+
+    void tampilkanJadwal() {
+        cout << "\n-----------------------------\n";
+        cout << "Hari       : " << hari << endl;
+        cout << "Mata Kuliah: " << mataKuliah << endl;
+        cout << "Jam        : " << jam << endl;
+        cout << "Ruangan    : " << ruangan << endl;
+    }
+};
+
+int main() {
+    int jumlah;
+    cout << "Berapa jadwal kuliah yang ingin dimasukkan? ";
+    cin >> jumlah;
+    cin.ignore(); // flush newline
+
+    vector<Agenda> daftarAgenda(jumlah);
+
+    for (int i = 0; i < jumlah; ++i) {
+        cout << "\nInput Jadwal ke-" << i + 1 << endl;
+        daftarAgenda[i].inputJadwal();
+    }
+
+    cout << "\n=== Daftar Jadwal Kuliah ===\n";
+    for (int i = 0; i < jumlah; ++i) {
+        daftarAgenda[i].tampilkanJadwal();
+    }
+
+    return 0;
+}
 
