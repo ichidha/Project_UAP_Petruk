@@ -286,7 +286,7 @@ public:
             }
         }
 
-        cout << "\n===== REKOMENDASI JADWAL OPTIMAL (KNAPSACK) =====\n";
+        cout << "\n===== REKOMENDASI JADWAL OPTIMAL =====\n";
         int j = kapasitasJam;
         for (int i = jumlah; i > 0 && j > 0; i--) {
             if (dp[i][j] != dp[i - 1][j]) {
