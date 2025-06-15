@@ -21,8 +21,10 @@ struct MataKuliah {
     string dosen;
     string hari;
     string jam;
-    string ruangan;      // Ditambahkan
+    string ruangan;
     string keterangan;
+    int durasi;     // dalam jam
+    int prioritas;  // bobot/tingkat pentingnya
 };
 
 class AgendaKuliah {
@@ -62,7 +64,9 @@ public:
             cout << i + 1 << ". " << daftar[i].nama << " | " << daftar[i].hari
                  << " " << daftar[i].jam << " | Dosen: " << daftar[i].dosen
                  << " | Ruangan: " << daftar[i].ruangan
-                 << " | " << daftar[i].keterangan << endl;
+                 << " | " << daftar[i].keterangan
+                 << " | Durasi: " << daftar[i].durasi << " jam"
+                 << " | Prioritas: " << daftar[i].prioritas << endl;
         }
     }
 
@@ -81,7 +85,9 @@ public:
                  << daftar[i].jam << ";"
                  << daftar[i].dosen << ";"
                  << daftar[i].ruangan << ";"
-                 << daftar[i].keterangan << "\n";
+                 << daftar[i].keterangan << ";"
+                 << daftar[i].durasi << ";"
+                 << daftar[i].prioritas << "\n";
         }
         file.close();
         logStack.push("Agenda disimpan ke file");
@@ -108,13 +114,15 @@ public:
                 line.erase(0, pos + 1);
             }
             tokens.push_back(line);
-            if (tokens.size() == 6) {
+            if (tokens.size() == 8) {
                 strcpy(mk.nama, tokens[0].c_str());
                 mk.hari = tokens[1];
                 mk.jam = tokens[2];
                 mk.dosen = tokens[3];
                 mk.ruangan = tokens[4];
                 mk.keterangan = tokens[5];
+                mk.durasi = stoi(tokens[6]);
+                mk.prioritas = stoi(tokens[7]);
                 tambahAgenda(mk);
             }
         }
@@ -188,6 +196,10 @@ public:
             getline(cin, hasil->ruangan);
             cout << "Masukkan keterangan baru: ";
             getline(cin, hasil->keterangan);
+            cout << "Masukkan durasi (jam): ";
+            cin >> hasil->durasi;
+            cout << "Masukkan tingkat prioritas (1-10): ";
+            cin >> hasil->prioritas;
             logStack.push("Agenda diedit: " + string(hasil->nama));
             diedit = true;
         } else {
@@ -251,7 +263,38 @@ public:
         getline(cin, mk.ruangan);
         cout << "Masukkan keterangan: ";
         getline(cin, mk.keterangan);
+        cout << "Masukkan durasi (jam): ";
+        cin >> mk.durasi;
+        cout << "Masukkan tingkat prioritas (1-10): ";
+        cin >> mk.prioritas;
         tambahAgenda(mk);
+    }
+
+    void jadwalPrioritasOptimal(int kapasitasJam) {
+        vector<vector<int>> dp(jumlah + 1, vector<int>(kapasitasJam + 1, 0));
+
+        for (int i = 1; i <= jumlah; i++) {
+            for (int j = 1; j <= kapasitasJam; j++) {
+                if (daftar[i - 1].durasi <= j) {
+                    dp[i][j] = max(
+                        daftar[i - 1].prioritas + dp[i - 1][j - daftar[i - 1].durasi],
+                        dp[i - 1][j]
+                    );
+                } else {
+                    dp[i][j] = dp[i - 1][j];
+                }
+            }
+        }
+
+        cout << "\n===== REKOMENDASI JADWAL OPTIMAL (KNAPSACK) =====\n";
+        int j = kapasitasJam;
+        for (int i = jumlah; i > 0 && j > 0; i--) {
+            if (dp[i][j] != dp[i - 1][j]) {
+                MataKuliah& mk = daftar[i - 1];
+                cout << "- " << mk.nama << " (" << mk.durasi << " jam, prioritas " << mk.prioritas << ")\n";
+                j -= mk.durasi;
+            }
+        }
     }
 };
 
@@ -267,9 +310,10 @@ int main() {
         cout << "5. Urutkan Agenda\n";
         cout << "6. Cari Agenda\n";
         cout << "7. Edit Agenda\n";
-        cout << "8. Hapus Agenda\n";
-        cout << "9. Tampilkan Notifikasi\n";
-        cout << "10. Tampilkan Log\n";
+        cout << "8. Rekomendasi Jadwal Optimal\n";
+        cout << "9. Hapus Agenda\n";
+        cout << "10. Tampilkan Notifikasi\n";
+        cout << "11. Tampilkan Log\n";
         cout << "0. Keluar\n";
         cout << "Pilih menu: ";
         cin >> pilihan;
@@ -301,6 +345,13 @@ int main() {
                 break;
             }
             case 8: {
+                int maxJam;
+                cout << "Masukkan jumlah maksimal jam yang tersedia: ";
+                cin >> maxJam;
+                sistem.jadwalPrioritasOptimal(maxJam);
+                break;
+            }
+            case 9: {
                 char nama[50];
                 cin.ignore();
                 cout << "Masukkan nama mata kuliah yang ingin dihapus: ";
@@ -308,11 +359,10 @@ int main() {
                 sistem.hapusAgenda(nama);
                 break;
             }
-            case 9: sistem.tampilkanNotifikasi(); break;
-            case 10: sistem.tampilkanLog(); break;
+            case 10: sistem.tampilkanNotifikasi(); break;
+            case 11: sistem.tampilkanLog(); break;
         }
     } while (pilihan != 0);
 
     return 0;
 }
-
